@@ -38,7 +38,7 @@ class ConsumeOrch(threading.Thread):
     def initialize(self):
         global running
         self.consumer1.subscribe(['register'])
-        n = 1
+        n = 2
         while running:
             msg = self.consumer1.poll(1000)
             if len(msg) > 0:
@@ -74,8 +74,8 @@ class ConsumeOrch(threading.Thread):
     
     def getMetrics(self):
         self.consumer3.subscribe(['metrics'])
-        n = 1
-        while True:
+        # n = 1
+        while running:
             msg = self.consumer3.poll(1000)
             if len(msg) > 0:
                 print('--------------------------------')
@@ -83,12 +83,12 @@ class ConsumeOrch(threading.Thread):
                 print(f"Topic: {list(msg.values())[0][0].topic}")
                 print(f"Message: {list(msg.values())[0][0].value}")
                 print('--------------------------------')
-                n -= 1
+                # n -= 1
 
-            if n == 0:
-                self.consumer3.close() #! Safety Measure
-                print('Consumer Closed')
-                break
+            # if n == 0:
+            #     self.consumer3.close() #! Safety Measure
+            #     print('Consumer Closed')
+            #     break
 
 
 def consume():   
@@ -96,6 +96,7 @@ def consume():
     print("Hello World")
     C_orchestrator = ConsumeOrch()
     C_orchestrator.initialize()
+    C_orchestrator.getMetrics()
 def produce():
     pass
     

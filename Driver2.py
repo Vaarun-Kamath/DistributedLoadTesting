@@ -4,11 +4,24 @@ import time
 import threading
 import socket
 import sys
+import requests
+import datetime as dt
 
 class ConsumeDriver(threading.Thread):
     def __init__(self, nodeID):
         self.nodeID = nodeID
         self.consumer = KafkaConsumer(value_deserializer = lambda m: json.loads(m.decode('ascii')))
+        self.producer = KafkaProducer(value_serializer = lambda m: json.dumps(m).encode('ascii'))
+        host = socket.gethostname()
+        ip = socket.gethostbyname(host)
+        data={
+            "nodeID": self.nodeID,
+            "node_IP": ip,
+            "message_type": "Driver Node Register"
+        }
+        self.producer.send(topic='register', value=data)
+        self.producer.flush()
+        print("Registered Driver Node")
         self.configs = {}
 
     def initialize(self):
@@ -34,7 +47,40 @@ class ConsumeDriver(threading.Thread):
         if(message["testID"] in self.configs.keys()):
             print(message)
             print(self.configs)
-            print("YES THE",self.configs[message["testID"]]["testType"],"TEST HAS STARTED FOR",message["testID"])
+            testType = self.configs[message["testID"]]["testType"]
+            testDelay = self.configs[message["testID"]]["testDelay"]
+            print("YES THE",testType,"TEST HAS STARTED FOR",message["testID"])
+            x=5
+            driver_side_latency = []
+            server_side_latency = []
+            while x:
+                
+                # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
+                entry = dt.datetime.now().microsecond/(10**3)
+                response = requests.get(url="http://localhost:5000/ping")
+                exit = dt.datetime.now().microsecond/(10**3)
+                driver_side_latency.append(exit-entry)
+                # driver_side["exit"].append(dt.datetime.now().microsecond/(10**3))
+                # print(response.json())
+                response = response.json()
+                server_side_latency.append((response["exit"]/(10**6))-(response["entry"]/(10**6)))
+                # server_side["entry"].append(response["entry"]/(10**6))
+                # server_side["exit"].append(response["exit"]/(10**6))
+                # if(driver_side["exit"]-driver_side["entry"]):
+                #     # print(response,driver_side)
+                #     print((response["exit"]-response["entry"])/(10**6),(driver_side["exit"]-driver_side["entry"])/(10**3))
+                time.sleep(testDelay/1000)
+                x-=1
+            print("Driver Side:", driver_side_latency)
+            print("Server Side:", server_side_latency)
+            data={"NodeID":self.nodeID,"TestID":message["testID"],
+                  "metrics_driver":{"mean_latency":sum(driver_side_latency)/len(driver_side_latency),
+                                    "max_latency":max(driver_side_latency),
+                                    "min_latency":min(driver_side_latency)},
+                  "metrics_server":{"mean_latency":sum(server_side_latency)/len(server_side_latency),
+                                    "max_latency":max(server_side_latency),
+                                    "min_latency":min(server_side_latency)}}
+            self.producer.send(topic='metrics',value=data)
         else:
             print("Invalid Test ID: ")
     
@@ -85,10 +131,12 @@ if __name__ == "__main__":
     # while True:
 
     nodeID = sys.argv[1]
-    P_driver = ProduceDriver(nodeID)
+    # P_driver = ProduceDriver(nodeID)
     C_driver = ConsumeDriver(nodeID)
     C_driver.initialize()
+    C_driver.producer.flush()
+    C_driver.producer.close()
     # P_driver.sendHeartbeat("YES")
     # P_driver.sendMetrics(3,3,1,5)
-    P_driver.producer.flush()
-    P_driver.producer.close()
+    # P_driver.producer.flush()
+    # P_driver.producer.close()
