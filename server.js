@@ -8,10 +8,11 @@ var num_requests = 0;
 var num_responses = 0;
 var a = 0;
 app.get("/ping",  (req, res) => {
+  // console.log(req.query)
   const entry = process.hrtime()[1];
   num_requests += 1;
   a++;
-  res.send(JSON.stringify({"status": 200, "value": a, "entry": entry, "exit": process.hrtime()[1]}));
+  res.send(JSON.stringify({"status": 200, "value": a, "entry": entry, "exit": process.hrtime()[1], "entry_driver": req.query.entry_driver}));
   num_responses += 1;
 })
 

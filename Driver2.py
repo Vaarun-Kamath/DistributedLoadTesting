@@ -56,13 +56,14 @@ class ConsumeDriver(threading.Thread):
             while x:
                 
                 # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
-                entry = dt.datetime.now().microsecond/(10**3)
-                response = requests.get(url="http://localhost:5000/ping")
+                # entry = dt.datetime.now().microsecond/(10**3)
+                response = requests.get(url="http://localhost:5000/ping", params={"entry_driver": dt.datetime.now().microsecond/(10**3)})
                 exit = dt.datetime.now().microsecond/(10**3)
-                driver_side_latency.append(exit-entry)
+                
                 # driver_side["exit"].append(dt.datetime.now().microsecond/(10**3))
                 # print(response.json())
                 response = response.json()
+                driver_side_latency.append(exit-float(response["entry_driver"]))
                 server_side_latency.append((response["exit"]/(10**6))-(response["entry"]/(10**6)))
                 # server_side["entry"].append(response["entry"]/(10**6))
                 # server_side["exit"].append(response["exit"]/(10**6))
