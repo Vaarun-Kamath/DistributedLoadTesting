@@ -56,20 +56,18 @@ class ConsumeDriver(threading.Thread):
             while x:
                 
                 # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
-                # entry = dt.datetime.now().microsecond/(10**3)
-                response = requests.get(url="http://localhost:5000/ping", params={"entry_driver": dt.datetime.now().microsecond/(10**3)})
-                exit = dt.datetime.now().microsecond/(10**3)
+                entry = time.monotonic_ns()
+                response = requests.get(url="http://localhost:5000/ping", params={"entry_driver": time.monotonic_ns()/(10**6)})
+                exit = time.monotonic_ns()
                 
                 # driver_side["exit"].append(dt.datetime.now().microsecond/(10**3))
                 # print(response.json())
                 response = response.json()
-                driver_side_latency.append(exit-float(response["entry_driver"]))
-                server_side_latency.append((response["exit"]/(10**6))-(response["entry"]/(10**6)))
-                # server_side["entry"].append(response["entry"]/(10**6))
-                # server_side["exit"].append(response["exit"]/(10**6))
-                # if(driver_side["exit"]-driver_side["entry"]):
-                #     # print(response,driver_side)
-                #     print((response["exit"]-response["entry"])/(10**6),(driver_side["exit"]-driver_side["entry"])/(10**3))
+                # driver_side_latency.append(exit-float(response["entry_driver"]))
+                print(exit,entry)
+                print(response["value"])
+                driver_side_latency.append((exit-entry)/(10**6))
+                server_side_latency.append((response["exit"]-response["entry"])/(10**6))
                 time.sleep(testDelay/1000)
                 x-=1
             print("Driver Side:", driver_side_latency)

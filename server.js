@@ -8,7 +8,7 @@ var num_requests = 0;
 var num_responses = 0;
 var a = 0;
 app.get("/ping",  (req, res) => {
-  // console.log(req.query)
+  console.log(req.query)
   const entry = process.hrtime()[1];
   num_requests += 1;
   a++;
