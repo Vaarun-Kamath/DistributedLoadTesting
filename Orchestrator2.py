@@ -20,7 +20,7 @@ class ConsumeOrch(threading.Thread):
         self.driverNodes = {}
     
     def initialize(self):
-        global running
+        global running, test
         self.consumer1.subscribe(['register'])
 
         def handle_driver_node(nodeID):
@@ -29,6 +29,10 @@ class ConsumeOrch(threading.Thread):
                 if not self.driverNodes[nodeID]:
                     print(f"Driver node {nodeID} has died!")
                     del self.driverNodes[nodeID]
+                    if not len(self.driverNodes):
+                        print(f"Recent Metrics Details [{test}]: ")
+                        for i in all_metrics[test]:
+                            print(f"{i}: {all_metrics[test][i]}")
                     break
                 self.driverNodes[nodeID]=0
                 time.sleep(2)
@@ -78,7 +82,7 @@ class ConsumeOrch(threading.Thread):
     
     def getMetrics(self):
         self.consumer3.subscribe(['metrics'])
-        global all_metrics
+        global all_metrics, test
         
 
         print("Listening for metrics:")
@@ -124,9 +128,10 @@ class ConsumeOrch(threading.Thread):
                 print(f"Test Done for {data['node_id']}")
                 print(completed_drivers, len(self.driverNodes))
                 if completed_drivers % len(self.driverNodes) == 0: # Test ended
-                    print(f"All Metrics Details: {all_metrics}")
-                    print("*"*30)
-                    print(f"Recent Metrics Details for {test}: {all_metrics[test]}")
+                    # print(f"All Metrics Details: {all_metrics}")
+                    print(f"Recent Metrics Details [{test}]: ")
+                    for i in all_metrics[test]:
+                        print(f"{i}: {all_metrics[test][i]}")
                     self.metrics = []
                     latencies = []
 
