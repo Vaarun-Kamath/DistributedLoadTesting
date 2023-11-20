@@ -6,6 +6,8 @@ import socket
 import sys
 import requests
 import datetime as dt
+import statistics
+import uuid
 
 class ConsumeDriver(threading.Thread):
     def __init__(self, nodeID):
@@ -45,42 +47,38 @@ class ConsumeDriver(threading.Thread):
 
     def run_test(self,message):
         if(message["testID"] in self.configs.keys()):
-            print(message)
-            print(self.configs)
+            print("Configs: ",self.configs)
             testType = self.configs[message["testID"]]["testType"]
             testDelay = self.configs[message["testID"]]["testDelay"]
-            print("YES THE",testType,"TEST HAS STARTED FOR",message["testID"])
+            print(testType,"test has started for testID",message["testID"])
             x = 5
             driver_side_latency = []
-            server_side_latency = []
-            while x:
+            for i in range(x):
                 
                 # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
-                entry = time.monotonic_ns()
+                entry = dt.datetime.now().timestamp()
                 response = requests.get(url="http://localhost:5000/ping", params={"entry_driver": time.monotonic_ns()/(10**6)})
-                exit = time.monotonic_ns()
-                
-                # driver_side["exit"].append(dt.datetime.now().microsecond/(10**3))
-                # print(response.json())
-                response = response.json()
-                # driver_side_latency.append(exit-float(response["entry_driver"]))
-                print(exit,entry)
-                print(response["value"])
+                if response:
+                    print(f"{i+1} Recieved")
+                exit = dt.datetime.now().timestamp()
+
+
                 driver_side_latency.append((exit-entry)/(10**6))
-                server_side_latency.append((response["exit"]-response["entry"])/(10**6))
-                time.sleep(testDelay/1000)
-                x-=1
-            print("Driver Side:", driver_side_latency)
-            print("Server Side:", server_side_latency)
-            data={"NodeID":self.nodeID,"TestID":message["testID"],
-                  "metrics_driver":{"mean_latency":sum(driver_side_latency)/len(driver_side_latency),
-                                    "max_latency":max(driver_side_latency),
-                                    "min_latency":min(driver_side_latency)},
-                #   "metrics_server":{"mean_latency":sum(server_side_latency)/len(server_side_latency),
-                #                     "max_latency":max(server_side_latency),
-                #                     "min_latency":min(server_side_latency)}
+                data = {
+                    "node_id": self.nodeID,
+                    "test_id": message["testID"],
+                    "report_id": str(uuid.uuid4()),
+                    "metrics": {
+                        "mean_latency": sum(driver_side_latency)/len(driver_side_latency),
+                        "median_latency": statistics.median(driver_side_latency),
+                        "min_latency": max(driver_side_latency),
+                        "max_latency": min(driver_side_latency)
+                    }
                 }
-            self.producer.send(topic='metrics',value=data)
+                self.producer.send(topic='metrics',value=data)
+                time.sleep(testDelay/1000)
+            print("Sending Success message!")
+            self.producer.send(topic='success', value={"status":'success'})
         else:
             print("Invalid Test ID: ")
     
@@ -110,14 +108,14 @@ class ProduceDriver(threading.Thread):
         self.producer.flush()
         print("Heartbeat Sent")
     
-    def sendMetrics(self,mean,median,minn,maxx):
+    def sendMetrics(self, mean, median, min, maxx):
         data={
             "nodeID": self.nodeID,
             "test_id": 1,
             "metrics":{
                 "mean_latency": mean,
                 "median_latency": median,
-                "min_latency": minn,
+                "min_latency": min,
                 "max_latency": maxx
             }
         }
