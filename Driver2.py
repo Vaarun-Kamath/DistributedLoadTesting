@@ -58,11 +58,11 @@ class ConsumeDriver(threading.Thread):
                 # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
                 entry = dt.datetime.now().timestamp()
                 response = requests.get(url="http://localhost:5000/ping", params={"entry_driver": time.monotonic_ns()/(10**6)})
-                if response:
-                    print(f"{i+1} Recieved")
                 exit = dt.datetime.now().timestamp()
-
-
+                # response = response.json()
+                if response:
+                    print(f"{i+1} Recieved {response}")
+                
                 driver_side_latency.append((exit-entry)/(10**6))
                 data = {
                     "node_id": self.nodeID,
@@ -73,12 +73,15 @@ class ConsumeDriver(threading.Thread):
                         "median_latency": statistics.median(driver_side_latency),
                         "min_latency": max(driver_side_latency),
                         "max_latency": min(driver_side_latency)
-                    }
+                    },
+                    "end": bool(i+1 == x)
                 }
+                print(data)
+                print("\n--------\n")
                 self.producer.send(topic='metrics',value=data)
                 time.sleep(testDelay/1000)
             print("Sending Success message!")
-            self.producer.send(topic='success', value={"status":'success'})
+            # self.producer.send(topic='success', value={"status":'success'})
         else:
             print("Invalid Test ID: ")
     
