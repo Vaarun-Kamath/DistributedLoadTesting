@@ -48,13 +48,13 @@ def run_test(message):
         
         # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
         entry = dt.datetime.now().timestamp()
-        response = requests.get(url="http://localhost:5000/ping")
+        response = requests.get(url="http://localhost:4000/ping")
         exit = dt.datetime.now().timestamp()
         # response = response.json()
         if response:
             print(f"{i+1} Recieved {response}")
         
-        driver_side_latency.append((exit-entry)/(10**6))
+        driver_side_latency.append((exit-entry)*(1000))
         data = {
             "node_id": nodeID,
             "test_id": message["testID"],

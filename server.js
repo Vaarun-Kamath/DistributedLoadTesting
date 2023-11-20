@@ -2,7 +2,7 @@ const http = require('http');
 const express = require('express');
 
 const app = express();
-const PORT = 5000;
+const PORT = 4000;
 
 var num_requests = 0;
 var num_responses = 0;

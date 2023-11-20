@@ -32,7 +32,7 @@ class ConsumeOrch(threading.Thread):
                     if not len(self.driverNodes):
                         print(f"Recent Metrics Details [{test}]: ")
                         for i in all_metrics[test]:
-                            print(f"{i}: {all_metrics[test][i]}")
+                            print(f"{i}: {json.dumps(all_metrics[test][i], indent=4)}")
                     break
                 self.driverNodes[nodeID]=0
                 time.sleep(2)
@@ -123,15 +123,19 @@ class ConsumeOrch(threading.Thread):
                 if data['node_id'] not in d_node_metrics:
                     d_node_metrics[data['node_id']] = 0
                 d_node_metrics[data['node_id']] += 1
+
+                print(f"Recent Metrics Details [{test}]: ")
+                print(json.dumps(all_metrics[test], indent=4), end="\r")
+
             if data['end']:
                 completed_drivers += 1
-                print(f"Test Done for {data['node_id']}")
-                print(completed_drivers, len(self.driverNodes))
+                # print(f"Test Done for {data['node_id']}")
+                # print(completed_drivers, len(self.driverNodes))
                 if completed_drivers % len(self.driverNodes) == 0: # Test ended
                     # print(f"All Metrics Details: {all_metrics}")
-                    print(f"Recent Metrics Details [{test}]: ")
-                    for i in all_metrics[test]:
-                        print(f"{i}: {all_metrics[test][i]}")
+                    # print(f"Recent Metrics Details [{test}]: ")
+                    # for i in all_metrics[test]:
+                    #     print(f"{i}: {all_metrics[test][i]}")
                     self.metrics = []
                     latencies = []
 
@@ -208,40 +212,43 @@ def main():
               4)Stop Testing
               5)Exit""")
         choice=int(input("Enter your choice:\n"))
-        if(choice==1):  
-            P_orchestrator = ProduceOrch()
-            testID = str(uuid.uuid4())
-            # 'fnfn3221'
-            tests.append(testID)
-            testType = int(input("""Select Type of Testing:
+        match choice:
+            case 1:
+                P_orchestrator = ProduceOrch()
+                testID = str(uuid.uuid4())
+                
+                tests.append(testID)
+                testType = int(input("""Select Type of Testing:
                              1) Avalanche
                              2) Tsunami
                              """))
-
-            if(testType == 1 ):
-                testType="Avalanche"
-                testDelay = 0
-            elif testType == 2:
-                testType="Tsunami"
-                testDelay = int(input("Enter delay (in ms): "))
                 
-            num_reqs = int(input("Enter number of requests for this test: "))
-            P_orchestrator.sendTestConfig(testID, testType, testDelay, num_reqs)
-        elif(choice==2):
-            if(testID in tests):
-                P_orchestrator.triggerTest(testID)
-                # metr.join()
-            else:
-                print("The TEST-ID does not exist")
-        elif(choice==3):
-            pass
-        elif(choice==4):
-            break
-        elif(choice==5):
-            running = False
-            # quit()
-            sys.exit()
+                if(testType == 1 ):
+                    testType="Avalanche"
+                    testDelay = 0
+                elif testType == 2:
+                    testType="Tsunami"
+                    testDelay = int(input("Enter delay (in ms): "))
 
+                num_reqs = int(input("Enter number of requests for this test: "))
+                P_orchestrator.sendTestConfig(testID, testType, testDelay, num_reqs)
+            case 2:
+                if(testID in tests):
+                    P_orchestrator.triggerTest(testID)
+                    # metr.join()
+                else:
+                    print("The TEST-ID does not exist")
+            case 3:
+                pass
+            case 4:
+                break
+            case 5:
+                running = False
+                # quit()
+                sys.exit()
+            case _:
+                print("Invalid Choice")
+                
 if __name__ == '__main__':
     # run_it = threading.Thread(target=run)
 
