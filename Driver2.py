@@ -20,12 +20,12 @@ def initialize():
     while True:
         msg = consumer.poll(polling_rate)
         if not len(msg): continue
-        print('--------------------------------')
+        # print('--------------------------------')
         topic=list(msg.values())[0][0].topic
         message=list(msg.values())[0][0].value
-        print(f"Topic: {topic}")
-        print(f"Message: {message}")
-        print('--------------------------------')
+        # print(f"Topic: {topic}")
+        # print(f"Message: {message}")
+        # print('--------------------------------')
         if(topic == "test_config"):
             # print(type(message))
             configs[message["testID"]]={"testType":message["testType"],"testDelay":message["testDelay"],"requests":message["requests"]}
@@ -68,8 +68,8 @@ def run_test(message):
             },
             "end": bool(i+1 == x)
         }
-        print(data)
-        print("\n--------\n")
+        # print(data)
+        # print("\n--------\n")
         producer.send(topic='metrics',value=data)
         time.sleep(testDelay/1000)
     print("Sending Success message!")
@@ -81,6 +81,7 @@ def beat_heart():
     while running:
         heart_beat_msg["timestamp"] = dt.datetime.now().timestamp()
         producer.send(topic="heartbeat", value=heart_beat_msg)
+        # print("Heart Beat Sent")
         time.sleep(1)
 
 def main():
@@ -92,7 +93,7 @@ def main():
     host = socket.gethostname()
     ip = socket.gethostbyname(host)
     data={
-        "nodeID": nodeID,
+        "node_id": nodeID,
         "node_IP": ip,
         "message_type": "Driver Node Register"
     }

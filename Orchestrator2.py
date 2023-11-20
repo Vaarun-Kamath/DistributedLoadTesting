@@ -17,23 +17,37 @@ class ConsumeOrch(threading.Thread):
         self.consumer3 = KafkaConsumer(value_deserializer = lambda m: json.loads(m.decode('ascii')))
         self.metrics = []
         self.numDrivers = 0
-        self.driverNodes = []
+        self.driverNodes = {}
     
     def initialize(self):
         global running
         self.consumer1.subscribe(['register'])
+
+        def handle_driver_node(nodeID):
+            while True:
+                # print(f"{nodeID} 'heart check")
+                if not self.driverNodes[nodeID]:
+                    print(f"Driver node {nodeID} has died!")
+                    del self.driverNodes[nodeID]
+                    break
+                self.driverNodes[nodeID]=0
+                time.sleep(2)
         
         # n = self.numDrivers #! Number of drivers
         while running:
             msg = self.consumer1.poll(100)
             if len(msg) > 0:
                 self.numDrivers += 1
-                print('\n--------------------------------')
+                # print('\n--------------------------------')
                 # print('Length of message: ',len(msg),'\n\n',type(msg),'\n\n',msg,"\n\n\n")
-                print(f"Topic: {list(msg.values())[0][0].topic}")
-                print(f"Message: {list(msg.values())[0][0].value}")
-                self.driverNodes.append(list(msg.values())[0][0].value)
-                print('--------------------------------')
+                node = list(msg.values())[0][0].value
+                # print(f"Topic: {list(msg.values())[0][0].topic}")
+                # print(f"Message: {node}")
+
+                self.driverNodes[node["node_id"]] = 1
+                print(f'Node {node["node_id"]} has connected!')
+                threading.Thread(target=handle_driver_node, args=(node["node_id"],), daemon=True).start()
+                # print('--------------------------------')
                 # n -= 1
 
             # if n == 0:
@@ -41,22 +55,26 @@ class ConsumeOrch(threading.Thread):
         print('Register Consumer Closed')
     
     def listenHeartbeat(self):
+        # c=0
         self.consumer2.subscribe(['heartbeat'])
-        n = 1
         while running:
             msg = self.consumer2.poll(1000)
             if len(msg) > 0:
-                print('--------------------------------')
+                # print("Heart has Beat")
+                # print('--------------------------------')
                 # print('Length of message: ',len(msg),'\n\n',type(msg),'\n\n',msg,"\n\n\n")
-                print(f"Topic: {list(msg.values())[0][0].topic}")
-                print(f"Message: {list(msg.values())[0][0].value}")
-                print('--------------------------------')
-                n -= 1
+                node = list(msg.values())[0][0].value
+                # print(f"Topic: {list(msg.values())[0][0].topic}")
+                # print(f"Message: {node}")
+                # print('--------------------------------')
+                self.driverNodes[node["node_id"]] = 1
+                # c+=1
+                # if(c>(len(self.driverNodes)*2)):
+                #     print(self.driverNodes)
+                #     c=0
 
-            if n == 0:
-                self.consumer2.close() #! Safety Measure
-                print('Consumer Closed')
-                break
+        self.consumer2.close() #! Safety Measure
+        print('HeartBeat Consumer Closed')
     
     def getMetrics(self):
         self.consumer3.subscribe(['metrics'])
@@ -152,6 +170,9 @@ def consumeInit(C_orchestrator):
 def consumeMetrics(C_orchestrator):
     C_orchestrator.getMetrics()
 
+def consume_heart_beat(C_orchestrator):
+    C_orchestrator.listenHeartbeat()
+
 def main():
     global running, tests, testID
     running = True
@@ -159,11 +180,17 @@ def main():
     testID=None
     C_orchestrator = ConsumeOrch()
     # numDrivers = int(input("Number of driver nodes: "))
-    cons = threading.Thread(target=consumeInit, args=(C_orchestrator,)) # Regestring
+    cons = threading.Thread(target=consumeInit, args=(C_orchestrator,), daemon=True) # Regestring
     cons.start()
     
-    metr = threading.Thread(target=consumeMetrics, args=(C_orchestrator,)) # metrics
+    metr = threading.Thread(target=consumeMetrics, args=(C_orchestrator,), daemon=True) # metrics
     metr.start()
+
+
+    heart_beat_thread = threading.Thread(target=consume_heart_beat, args=(C_orchestrator,), daemon=True) # metrics
+    heart_beat_thread.start()
+
+
     
     while running:
         # C_orchestrator = ConsumeOrch()
@@ -175,7 +202,7 @@ def main():
               3)Stop Registering Driver Nodes
               4)Stop Testing
               5)Exit""")
-        choice=int(input("Enter your choice: "))
+        choice=int(input("Enter your choice:\n"))
         if(choice==1):  
             P_orchestrator = ProduceOrch()
             testID = str(uuid.uuid4())
