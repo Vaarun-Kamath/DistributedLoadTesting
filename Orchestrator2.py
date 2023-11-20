@@ -2,8 +2,13 @@ from kafka import KafkaConsumer, KafkaProducer
 import json
 import time
 import threading
+import uuid
+import sys
+import statistics
 
 # C_orchestrator = None
+
+all_metrics = {}
 
 class ConsumeOrch(threading.Thread):
     def __init__(self):
@@ -55,24 +60,43 @@ class ConsumeOrch(threading.Thread):
     
     def getMetrics(self):
         self.consumer3.subscribe(['metrics'])
+        global all_metrics
+        
 
         print("Listening for metrics:")
         d_node_metrics = {}
         completed_drivers = 0
+        
+
+        latencies = []
 
         for msg in self.consumer3:
-            print("MESSG RECIEVED ")
+            # print("MESSG RECIEVED ")
         # while running:
         #     msg = self.consumer3.poll(1000)
             # print("msg: ",msg)
             data = msg.value
             # print(data)
             if len(msg) > 0:
-                # data = list(msg.values())[0][0].value 
-                # print("msg: ", msg.value)
-                # print(type(msg.value))
-                # data = list(msg.values())[0][0].values()
-                # print(f"Message: {data}")
+                test=data["test_id"]
+
+                node=data["node_id"]
+
+                if node not in all_metrics[test]:
+                    all_metrics[test][node] = {}
+
+                metrics=data["metrics"]
+                all_metrics[test][node] = metrics
+                latencies.append(metrics["latency"])
+
+
+                all_metrics[test]["Aggregate"]["min_latency"] = min(latencies)
+                all_metrics[test]["Aggregate"]["max_latency"] = max(latencies)
+                all_metrics[test]["Aggregate"]["mean_latency"] = statistics.mean(latencies)
+                all_metrics[test]["Aggregate"]["median_latency"] = statistics.median(latencies)
+                
+                        
+
                 self.metrics.append(data)
                 if data['node_id'] not in d_node_metrics:
                     d_node_metrics[data['node_id']] = 0
@@ -80,9 +104,14 @@ class ConsumeOrch(threading.Thread):
             if data['end']:
                 completed_drivers += 1
                 print(f"Test Done for {data['node_id']}")
+                print(completed_drivers, len(self.driverNodes))
                 if completed_drivers % len(self.driverNodes) == 0: # Test ended
-                    print(f"Metrics Details: {self.metrics}")
+                    print(f"All Metrics Details: {all_metrics}")
+                    print("*"*30)
+                    print(f"Recent Metrics Details for {test}: {all_metrics[test]}")
                     self.metrics = []
+                    latencies = []
+
         self.consumer3.close()
 
 
@@ -92,12 +121,15 @@ class ProduceOrch(threading.Thread):
         self.producer = KafkaProducer(value_serializer = lambda m: json.dumps(m).encode('ascii'))
         # self.C_orchestrator = C_orchestrator
         
-    def sendTestConfig(self, testID, testType, testDelay):
+    def sendTestConfig(self, testID, testType, testDelay, reqs):
         data = {
             "testID": testID, #! <RANDOMLY GENERATED UNQUE TEST ID>,
             "testType": testType,
             "testDelay": testDelay,
+            "requests": reqs 
         }
+        global all_metrics
+        all_metrics[testID] = {"Aggregate": {}}
         self.producer.send(topic='test_config', value=data)
         self.producer.flush()
         print("Test configuration set")
@@ -120,10 +152,6 @@ def consumeInit(C_orchestrator):
 def consumeMetrics(C_orchestrator):
     C_orchestrator.getMetrics()
 
-    
-# def produce():
-#     pass
-    
 def main():
     global running, tests, testID
     running = True
@@ -150,7 +178,7 @@ def main():
         choice=int(input("Enter your choice: "))
         if(choice==1):  
             P_orchestrator = ProduceOrch()
-            testID = input("Enter your test ID: ")
+            testID = str(uuid.uuid4())
             # 'fnfn3221'
             tests.append(testID)
             testType = int(input("""Select Type of Testing:
@@ -165,7 +193,8 @@ def main():
                 testType="Tsunami"
                 testDelay = int(input("Enter delay (in ms): "))
                 
-            P_orchestrator.sendTestConfig(testID, testType, testDelay)
+            num_reqs = int(input("Enter number of requests for this test: "))
+            P_orchestrator.sendTestConfig(testID, testType, testDelay, num_reqs)
         elif(choice==2):
             if(testID in tests):
                 P_orchestrator.triggerTest(testID)
@@ -178,6 +207,8 @@ def main():
             break
         elif(choice==5):
             running = False
+            # quit()
+            sys.exit()
 
 if __name__ == '__main__':
     # run_it = threading.Thread(target=run)
