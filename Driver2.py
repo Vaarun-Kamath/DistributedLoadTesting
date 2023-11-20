@@ -12,11 +12,7 @@ import uuid
 polling_rate = 1000
 running = True
 configs = {}
-heart_beat_msg = {
-    "node_id": nodeID,
-    "heartbeat": "YES",
-    "timestamp": dt.datetime.now().timestamp()
-}
+driver_side_latency = []
 
 def initialize():
     global configs, consumer
@@ -32,7 +28,7 @@ def initialize():
         print('--------------------------------')
         if(topic == "test_config"):
             # print(type(message))
-            configs[message["testID"]]={"testType":message["testType"],"testDelay":message["testDelay"]}
+            configs[message["testID"]]={"testType":message["testType"],"testDelay":message["testDelay"],"requests":message["requests"]}
         elif(topic == "trigger"):
             run_test(message)
 
@@ -46,13 +42,13 @@ def run_test(message):
     testType = configs[message["testID"]]["testType"]
     testDelay = configs[message["testID"]]["testDelay"]
     print(testType,"test has started for testID",message["testID"])
-    x = 5
+    x = configs[message["testID"]]["requests"]
     driver_side_latency = []
     for i in range(x):
         
         # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
         entry = dt.datetime.now().timestamp()
-        response = requests.get(url="http://localhost:5000/ping", params={"entry_driver": time.monotonic_ns()/(10**6)})
+        response = requests.get(url="http://localhost:5000/ping")
         exit = dt.datetime.now().timestamp()
         # response = response.json()
         if response:
@@ -66,8 +62,9 @@ def run_test(message):
             "metrics": {
                 "mean_latency": sum(driver_side_latency)/len(driver_side_latency),
                 "median_latency": statistics.median(driver_side_latency),
-                "min_latency": max(driver_side_latency),
-                "max_latency": min(driver_side_latency)
+                "min_latency": min(driver_side_latency),
+                "max_latency": max(driver_side_latency),
+                "latency": (exit-entry)*1000
             },
             "end": bool(i+1 == x)
         }
@@ -80,13 +77,14 @@ def run_test(message):
 
 
 def beat_heart():
+    global heart_beat_msg
     while running:
         heart_beat_msg["timestamp"] = dt.datetime.now().timestamp()
         producer.send(topic="heartbeat", value=heart_beat_msg)
         time.sleep(1)
 
 def main():
-    global nodeID, configs, consumer, producer
+    global nodeID, configs, consumer, producer, heart_beat_msg
     nodeID = sys.argv[1]
     consumer = KafkaConsumer(value_deserializer = lambda m: json.loads(m.decode('ascii')))
     producer = KafkaProducer(value_serializer = lambda m: json.dumps(m).encode('ascii'))
@@ -97,6 +95,11 @@ def main():
         "nodeID": nodeID,
         "node_IP": ip,
         "message_type": "Driver Node Register"
+    }
+    heart_beat_msg = {
+        "node_id": nodeID,
+        "heartbeat": "YES",
+        "timestamp": dt.datetime.now().timestamp()
     }
 
     producer.send(topic='register', value=data)
