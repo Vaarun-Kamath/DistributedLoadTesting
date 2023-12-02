@@ -1,8 +1,6 @@
 # DistributedLoadTesting
- Temporary load testing bee dee project
 
-
-## start
+## Start
 ### For Windows
 go to kafka folder
 - start zookeeper
@@ -14,7 +12,7 @@ go to kafka folder
     bin\windows\kafka-server-start.bat config\server.properties
     ```
 
-## stop
+## Stop
 ### For Windows
 go to kafka folder
 - stop kafka:
