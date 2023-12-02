@@ -18,6 +18,25 @@ class ConsumeOrch(threading.Thread):
         self.metrics = []
         self.numDrivers = 0
         self.driverNodes = {}
+
+    # Print function for metrics
+    def print_metrics(self, test):
+        print(f"Recent Metrics Details [{test}]: ")
+        # print(all_metrics[test])
+        # print()
+        for metric_group in all_metrics[test]:
+            # print("METRIC: ", metric)
+            metrics = all_metrics[test][metric_group]
+            print("{")
+            for metric in metrics:
+                print("\t"+metric+": ", end="")
+                data = metrics[metric]
+                colour = ("\033[92m", "\033[93m", "\033[91m")[(data > 2.5) + (data > 7)]
+                print(f"{colour}{data}\033[00m")
+
+            # print(f"{i}: {json.dumps(all_metrics[test][i], indent=4)}")
+            print("}")
+
     
     def initialize(self):
         global running, test
@@ -31,8 +50,9 @@ class ConsumeOrch(threading.Thread):
                     del self.driverNodes[nodeID]
                     if not len(self.driverNodes):
                         print(f"Recent Metrics Details [{test}]: ")
-                        for i in all_metrics[test]:
-                            print(f"{i}: {json.dumps(all_metrics[test][i], indent=4)}")
+                        self.print_metrics(test)
+                        # for i in all_metrics[test]:
+                        #     print(f"{i}: {json.dumps(all_metrics[test][i], indent=4)}")
                     break
                 self.driverNodes[nodeID]=0
                 time.sleep(2)
@@ -125,7 +145,8 @@ class ConsumeOrch(threading.Thread):
                 d_node_metrics[data['node_id']] += 1
 
                 print(f"Recent Metrics Details [{test}]: ")
-                print(json.dumps(all_metrics[test], indent=4), end="\r")
+                self.print_metrics(test)
+                # print(json.dumps(all_metrics[test], indent=4), end="\r")
 
             if data['end']:
                 completed_drivers += 1
@@ -178,6 +199,7 @@ def consumeInit(C_orchestrator):
 
 def consumeMetrics(C_orchestrator):
     C_orchestrator.getMetrics()
+
 
 def consume_heart_beat(C_orchestrator):
     C_orchestrator.listenHeartbeat()

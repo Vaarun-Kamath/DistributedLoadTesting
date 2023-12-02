@@ -48,7 +48,7 @@ def run_test(message):
         
         # driver_side["entry"].append(dt.datetime.now().microsecond/(10**3))
         entry = dt.datetime.now().timestamp()
-        response = requests.get(url="http://localhost:4000/ping")
+        response = requests.get(url="http://localhost:8080/ping")
         exit = dt.datetime.now().timestamp()
         # response = response.json()
         if response:
@@ -60,7 +60,7 @@ def run_test(message):
             "test_id": message["testID"],
             "report_id": str(uuid.uuid4()),
             "metrics": {
-                "mean_latency": sum(driver_side_latency)/len(driver_side_latency),
+                "mean_latency": statistics.mean(driver_side_latency),
                 "median_latency": statistics.median(driver_side_latency),
                 "min_latency": min(driver_side_latency),
                 "max_latency": max(driver_side_latency),
